@@ -26,30 +26,28 @@ class BattleSystem {
 
       switch (action) {
         case '1':
-          // 공격
-          character.attackMonster(monster, outputService);
+          character.attackMonster(monster, outputService); // 기본 공격
           break;
         case '2':
-          // 방어
           character.defend();
           outputService.displayDefendAction(character);
           break;
         case '3':
-          // 아이템 사용
           character.useItem();
           outputService.displayUseItemAction(character);
           break;
         case 'reset':
-          // 게임 종료
           gameState.setGameOver();
+          print("게임이 종료되었습니다.");
           return;
         default:
           outputService.displayInvalidActionMessage();
       }
 
+      // 몬스터가 죽었는지 확인
       if (monster.health <= 0) {
         outputService.displayBattleWon(character.name, monster.name);
-        break;
+        return; // 전투 종료
       }
 
       // 몬스터의 턴
@@ -59,8 +57,25 @@ class BattleSystem {
       if (character.health <= 0) {
         outputService.displayBattleLost(character.name);
         gameState.setGameOver();
-        break;
+        return; // 전투 종료
       }
+
+      // 전투 상태 출력 및 지연 추가
+      outputService.displayBattleStatus(character, monster);
+      print("전투중입니다.");
+      await Future.delayed(Duration(seconds: 2));
+    }
+    if (monster.health <= 0) {
+      outputService.displayBattleWon(character.name, monster.name);
+    }
+
+    // Monster's turn
+    outputService.displayMonsterTurn(monster);
+    monster.attackCharacter(character, outputService);
+
+    if (character.health <= 0) {
+      outputService.displayBattleLost(character.name);
+      gameState.setGameOver();
     }
   }
 }

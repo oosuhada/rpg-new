@@ -5,6 +5,7 @@ import '../entities/character.dart';
 import '../entities/monster.dart';
 import '../core/game_state.dart';
 import '../entities/skill.dart';
+import '../services/save_load_service.dart';
 
 // 입력 서비스 클래스
 class InputService {
@@ -161,9 +162,9 @@ class InputService {
   // 공격 방식 선택
   Future<String?> getAttackChoice() async {
     while (true) {
-      stdout.write('공격 방식을 선택하세요 (1-3): ');
+      stdout.write('공격 방식을 선택하세요 (1: 기본 공격, 2: 스킬 사용): ');
       String? choice = stdin.readLineSync()?.trim();
-      if (choice == '1' || choice == '2' || choice == '3') {
+      if (choice == '1' || choice == '2') {
         return choice;
       }
       print('올바른 선택지를 입력해주세요.');

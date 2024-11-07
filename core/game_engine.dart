@@ -33,7 +33,7 @@ class GameEngine {
       await inputService.chooseLanguage();
       playerName = await inputService.getPlayerName();
 
-      // Load saved game state
+      // 저장된 게임 상태 로드
       GameState? loadedState =
           saveLoadService.loadGameState(characters, monsters);
       if (loadedState != null) {
@@ -44,13 +44,15 @@ class GameEngine {
             await inputService.chooseCharacter(characters);
         Monster firstMonster = monsters.first;
         gameState = GameState(selectedCharacter, firstMonster, characters);
+
+        // 게임 상태를 한 번만 출력
         outputService.displayGameStatus(gameState);
       }
 
       battleSystem = BattleSystem(inputService, outputService);
       battleSystem.setGameState(gameState);
     } catch (e) {
-      print("Error during initialization: $e");
+      print("초기화 중 오류가 발생했습니다: $e");
       exit(1);
     }
   }
@@ -295,6 +297,35 @@ class GameEngine {
 
     character.skills.add(newSkill);
     outputService.displayNewSkillLearned(character, newSkill);
+  }
+
+  Future<void> executeAttackChoice(Character character, Monster monster,
+      InputService inputService, OutputService outputService) async {
+    // Await the asynchronous call to getAttackChoice
+    String? attackChoice = await inputService.getAttackChoice();
+
+    if (attackChoice == '1') {
+      // Basic attack
+      character.attackMonster(monster, outputService);
+    } else if (attackChoice == '2') {
+      // Ensure character has skills
+      if (character.skills.isNotEmpty) {
+        int skillIndex = inputService.getSkillChoice(character.skills.length);
+        Skill chosenSkill = character.skills[skillIndex];
+
+        // Use skill
+        bool success = character.useSkill(chosenSkill, monster);
+        if (success) {
+          outputService.displaySkillEnhanced(character, chosenSkill);
+        } else {
+          print("MP가 부족합니다."); // Not enough MP
+        }
+      } else {
+        outputService.displayNoSkillsAvailable();
+      }
+    } else {
+      print('올바른 선택지를 입력해주세요.'); // Invalid choice
+    }
   }
 
   // 게임 종료 처리

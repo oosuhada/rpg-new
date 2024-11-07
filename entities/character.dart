@@ -3,6 +3,7 @@
 import '../services/input_output.dart';
 import 'skill.dart';
 import 'monster.dart';
+import 'dart:math';
 
 class Character {
   String name;
@@ -164,8 +165,10 @@ class Character {
   }
 
   void attackMonster(Monster monster, OutputService outputService) {
-    int damage = (attack - monster.defense).clamp(0, double.infinity).toInt();
+    // 기존 로직: (attack - monster.defense).clamp(0, double.infinity)
+    int damage = max(attack - monster.defense, 1); // 최소 데미지를 1로 설정
     monster.health -= damage;
+
     outputService.displayAttackResult(name, monster.name, damage);
   }
 }
