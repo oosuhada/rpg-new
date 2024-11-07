@@ -3,8 +3,12 @@
 import 'dart:io';
 import 'dart:math';
 import '../entities/character.dart';
+import '../entities/monster.dart';
+import '../entities/skill.dart';
 import '../services/input_output.dart';
 import '../services/save_load_service.dart';
+import 'game_state.dart';
+import 'battle_system.dart';
 
 class GameEngine {
   final InputService inputService;
@@ -19,6 +23,7 @@ class GameEngine {
 
   GameEngine(this.inputService, this.outputService);
 
+  // Initialize game
   Future<void> initialize() async {
     try {
       saveLoadService = SaveLoadService();
@@ -27,18 +32,57 @@ class GameEngine {
       await loadSkills();
       await inputService.chooseLanguage();
       playerName = await inputService.getPlayerName();
-      Character selectedCharacter =
-          await inputService.chooseCharacter(characters);
-      Monster firstMonster = monsters.first;
-      gameState = GameState(selectedCharacter, firstMonster);
+
+      // Load saved game state
+      GameState? loadedState =
+          saveLoadService.loadGameState(characters, monsters);
+      if (loadedState != null) {
+        gameState = loadedState;
+        outputService.displayGameLoaded();
+      } else {
+        Character selectedCharacter =
+            await inputService.chooseCharacter(characters);
+        Monster firstMonster = monsters.first;
+        gameState = GameState(selectedCharacter, firstMonster, characters);
+        outputService.displayGameStatus(gameState);
+      }
+
       battleSystem = BattleSystem(inputService, outputService);
+      battleSystem.setGameState(gameState);
     } catch (e) {
-      print("초기화 중 오류가 발생했습니다: $e");
+      print("Error during initialization: $e");
       exit(1);
     }
   }
 
-  // 캐릭터 로딩 메서드
+  // Start game
+  Future<void> start() async {
+    bool playAgain = true;
+    while (playAgain) {
+      outputService.displayWelcomeMessage(playerName!);
+
+      GameState? loadedState = saveLoadService.loadGameState(
+          characters, monsters); // Corrected signature
+      if (loadedState != null) {
+        gameState = loadedState;
+        outputService.displayGameLoaded();
+      } else {
+        outputService.displayNoSavedGame();
+        Character selectedCharacter =
+            await inputService.chooseCharacter(characters);
+        Monster firstMonster = monsters.first;
+        gameState = GameState(selectedCharacter, firstMonster, characters);
+        outputService.displayGameStatus(gameState);
+        await mainGameLoop();
+      }
+      playAgain = inputService.askToRetry();
+      if (playAgain) {
+        await initialize();
+      }
+    }
+  }
+
+  // 캐릭터 로딩
   Future<void> loadCharacters() async {
     try {
       final file = File('data/characters.txt');
@@ -59,7 +103,7 @@ class GameEngine {
     }
   }
 
-  // 몬스터 로딩 메서드
+  // 몬스터 로딩
   Future<void> loadMonsters() async {
     try {
       final file = File('data/monsters.txt');
@@ -81,7 +125,7 @@ class GameEngine {
     }
   }
 
-  // 스킬 로딩 메서드
+  // 스킬 로딩
   Future<void> loadSkills() async {
     try {
       final file = File('data/skills.txt');
@@ -99,6 +143,7 @@ class GameEngine {
       for (var character in characters) {
         character.skills = getRandomSkills(3);
       }
+
       for (var monster in monsters) {
         monster.skills = getRandomSkills(2);
       }
@@ -108,286 +153,153 @@ class GameEngine {
     }
   }
 
-  // 랜덤 스킬 선택 메서드
+  // 랜덤 스킬 선택
   List<Skill> getRandomSkills(int count) {
     final random = Random();
     return List.generate(
         count, (_) => allSkills[random.nextInt(allSkills.length)]);
   }
 
-  Future<void> start() async {
-    bool playAgain = true;
-    while (playAgain) {
-      outputService.displayWelcomeMessage(playerName!);
-      GameState? loadedState = await saveLoadService.loadGameState(playerName!);
-      if (loadedState != null) {
-        gameState = loadedState;
-        outputService.displayGameLoaded();
-      } else {
-        outputService.displayNoSavedGame();
-        Character selectedCharacter =
-            await inputService.chooseCharacter(characters);
-        Monster firstMonster = monsters.first;
-        gameState = GameState(selectedCharacter, firstMonster);
-      }
-
-      outputService.displayGameStatus(gameState);
-      await mainGameLoop();
-      playAgain = await inputService.askToRetry();
-      if (playAgain) {
-        await initialize();
-      }
+  // 게임 시작 카운트다운
+  void startGame() {
+    outputService.displayGameStart();
+    for (int i = 5; i > 0; i--) {
+      outputService.displayCountdown(i);
+      sleep(Duration(seconds: 1));
     }
+
+    outputService.displayMonsterAppearance(gameState.currentMonster.name);
+    outputService.displayFirstAttacker(gameState.currentCharacter.name);
   }
 
+  // 메인 게임 루프
   Future<void> mainGameLoop() async {
     while (!gameState.isGameOver) {
       outputService.displayGameStatus(gameState);
+
       final action = await inputService.getPlayerAction();
-      if (await executeAction(action)) {
-        break;
-      }
+
+      if (await executeAction(action)) break;
+
       updateGameState();
+
       outputService.displayGameStatusChanges(gameState);
+
+      endGame();
     }
-    endGame();
   }
 
+  // 플레이어 액션 실행
   Future<bool> executeAction(String action) async {
     switch (action) {
       case '1':
         await battleSystem.startBattle(
             gameState.currentCharacter, gameState.currentMonster);
         break;
+
       case '2':
         gameState.currentCharacter.defend();
         outputService.displayDefendAction(gameState.currentCharacter);
         break;
+
       case '3':
         gameState.currentCharacter.useItem();
         outputService.displayUseItemAction(gameState.currentCharacter);
         break;
+
       case 'reset':
         gameState.setGameOver();
         return true;
+
       default:
         outputService.displayInvalidActionMessage();
     }
+
     return false;
   }
 
+  // 게임 상태 업데이트
   void updateGameState() {
     if (gameState.currentMonster.health <= 0) {
       outputService.displayMonsterDefeated(gameState.currentMonster);
+
       gameState.clearStage();
+
       int oldLevel = gameState.currentCharacter.level;
+
       gameState.levelUp();
+
       if (gameState.currentCharacter.level > oldLevel) {
         outputService.displayLevelUp(gameState.currentCharacter);
+
         enhanceRandomSkill(gameState.currentCharacter);
+
         if (inputService.askToSave()) {
           saveLoadService.saveGameState(gameState, playerName!);
           outputService.displayGameSaved();
         }
-      }
-      if (monsters.isNotEmpty) {
-        gameState.currentMonster = monsters[Random().nextInt(monsters.length)];
-        // 몬스터의 레벨과 HP를 플레이어 레벨에 맞게 조정
-        gameState.currentMonster.level = gameState.level;
-        gameState.currentMonster.maxHealth = gameState.currentMonster
-            .calculateScaledHealth(
-                gameState.currentMonster.maxHealth, gameState.level);
-        gameState.currentMonster.health = gameState.currentMonster.maxHealth;
-      } else {
-        print("더 이상 몬스터가 없습니다. 게임 종료!");
-        gameState.isGameOver = true;
+
+        if (monsters.isNotEmpty) {
+          gameState.currentMonster =
+              monsters[Random().nextInt(monsters.length)];
+
+          // 몬스터의 레벨과 HP를 플레이어 레벨에 맞게 조정
+          gameState.currentMonster.level = gameState.level;
+          gameState.currentMonster.maxHealth = gameState.currentMonster
+              .calculateScaledHealth(
+                  gameState.currentMonster.maxHealth, gameState.level);
+
+          gameState.currentMonster.health = gameState.currentMonster.maxHealth;
+        } else {
+          print("더 이상 몬스터가 없습니다. 게임 종료!");
+          gameState.isGameOver = true;
+        }
       }
     }
+
     if (gameState.currentCharacter.health <= 0) {
       gameState.isGameOver = true;
     }
   }
 
+  // 랜덤 스킬 강화
   void enhanceRandomSkill(Character character) {
     if (character.skills.isEmpty) {
       outputService.displayNoSkillsAvailable();
       return;
     }
+
     Skill skillToEnhance =
         character.skills[Random().nextInt(character.skills.length)];
+
     character.enhanceSkill(skillToEnhance);
     outputService.displaySkillEnhanced(character, skillToEnhance);
   }
 
+  // 새 스킬 추가
   void addNewSkill(Character character) {
     if (allSkills.isEmpty) {
       outputService.displayNoSkillsAvailable();
       return;
     }
+
     List<Skill> availableSkills =
         allSkills.where((skill) => !character.skills.contains(skill)).toList();
+
     if (availableSkills.isEmpty) {
       outputService.displayAllSkillsLearned();
       return;
     }
+
     Skill newSkill = availableSkills[Random().nextInt(availableSkills.length)];
+
     character.skills.add(newSkill);
     outputService.displayNewSkillLearned(character, newSkill);
   }
 
+  // 게임 종료 처리
   void endGame() {
     outputService.displayGameOverMessage();
     saveLoadService.saveGameResult(gameState);
-  }
-}
-
-class BattleSystem {
-  final InputService inputService;
-  final OutputService outputService;
-
-  BattleSystem(this.inputService, this.outputService);
-
-  Future<void> startBattle(Character character, Monster monster) async {
-    outputService.displayBattleStart(character, monster);
-    await Future.delayed(Duration(seconds: 2));
-
-    while (character.health > 0 && monster.health > 0) {
-      await _characterTurn(character, monster);
-      if (monster.health <= 0) break;
-
-      await _monsterTurn(character, monster);
-      if (character.health <= 0) break;
-
-      outputService.displayBattleStatus(character, monster);
-      await Future.delayed(Duration(seconds: 1));
-    }
-
-    handleBattleResult(character, monster);
-  }
-
-  Future<void> _characterTurn(Character character, Monster monster) async {
-    outputService.displayCharacterTurn(character);
-    String action = await inputService.getPlayerAction();
-    print('');
-    await Future.delayed(Duration(seconds: 1));
-    await executeAction(action, character, monster);
-  }
-
-  Future<void> _monsterTurn(Character character, Monster monster) async {
-    outputService.displayMonsterTurn(monster);
-    await Future.delayed(Duration(seconds: 2));
-    int damage = monster.attack - character.defense;
-    if (damage > 0) {
-      character.health -= damage;
-      outputService.displayAttackResult(monster, character, damage);
-    } else {
-      outputService.displayAttackResult(monster, character, 0);
-    }
-    print('');
-  }
-
-  Future<void> executeAction(
-      String action, Character character, Monster monster) async {
-    switch (action) {
-      case '1': // 일반 공격
-        int damage = character.attack - monster.defense;
-        if (damage < 0) damage = 0;
-        monster.health -= damage;
-        outputService.displayAttackResult(character, monster, damage);
-        break;
-      case '2': // 스킬 사용
-        await useSkill(character, monster);
-        break;
-      case '3': // 아이템 사용
-        character.useItem();
-        outputService.displayUseItemAction(character);
-        break;
-      default:
-        outputService.displayInvalidActionMessage();
-    }
-  }
-
-  Future<void> useSkill(Character character, Monster monster) async {
-    if (character.skills.isEmpty) {
-      outputService.displayNoSkillsAvailable();
-      return;
-    }
-    outputService.displaySkillList(character.skills);
-    int skillIndex = await inputService.getSkillChoice(character.skills.length);
-    if (skillIndex >= 0 && skillIndex < character.skills.length) {
-      Skill selectedSkill = character.skills[skillIndex];
-      if (character.useSkill(selectedSkill, monster)) {
-        outputService.displaySkillUseResult(character, monster, selectedSkill);
-      } else {
-        outputService.displayNotEnoughMP();
-      }
-    } else {
-      outputService.displayInvalidSkillChoice();
-    }
-  }
-
-  Future<void> monsterTurn(Character character, Monster monster) async {
-    if (monster.skills.isNotEmpty && Random().nextBool()) {
-      // 50% 확률로 스킬 사용
-      Skill selectedSkill =
-          monster.skills[Random().nextInt(monster.skills.length)];
-      int damage = monster.useSkill(selectedSkill, character);
-      outputService.displayMonsterSkillUse(
-          monster, character, selectedSkill, damage);
-    } else {
-      // 일반 공격
-      int damage = monster.attack - character.defense;
-      if (damage > 0) {
-        character.health -= damage;
-        outputService.displayAttackResult(monster, character, damage);
-      } else {
-        outputService.displayAttackResult(monster, character, 0);
-      }
-    }
-  }
-
-  void handleBattleResult(Character character, Monster monster) {
-    if (character.health <= 0) {
-      outputService.displayBattleLost(character.name);
-    } else {
-      outputService.displayBattleWon(character.name, monster.name);
-    }
-  }
-}
-
-class GameState {
-  Character currentCharacter;
-  Monster currentMonster;
-  int level;
-  int stage;
-  bool isGameOver;
-
-  // 새로 추가된 속성들
-  Duration playTime = Duration.zero;
-  int monstersDefeated = 0;
-  int experienceGained = 0;
-
-  GameState(this.currentCharacter, this.currentMonster,
-      {this.level = 1, this.stage = 1, this.isGameOver = false});
-
-  void levelUp() {
-    level++;
-    stage = 1;
-    currentCharacter.levelUp();
-  }
-
-  void clearStage() {
-    stage++;
-    monstersDefeated++; // 스테이지를 클리어할 때마다 처치한 몬스터 수 증가
-    experienceGained += 10; // 경험치 증가 (예시 값)
-  }
-
-  void setGameOver() {
-    isGameOver = true;
-  }
-
-  // 플레이 시간 업데이트 메서드
-  void updatePlayTime(Duration elapsed) {
-    playTime += elapsed;
   }
 }

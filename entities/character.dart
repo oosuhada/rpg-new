@@ -1,8 +1,9 @@
 // lib/entities/character.dart
 
-import 'dart:math';
+import '../services/input_output.dart';
+import 'skill.dart';
+import 'monster.dart';
 
-// 캐릭터 클래스 정의
 class Character {
   String name;
   int health;
@@ -11,32 +12,42 @@ class Character {
   int defense;
   bool hasUsedItem = false;
   int level = 1;
-  List<Skill> skills = [];
+  List<Skill> skills;
   int mp;
   int maxMp;
-  Map<Skill, int> skillLevels = {};
+  Map<String, int> skillLevels = {}; // 스킬 이름을 키로 사용
 
-  Character(this.name, this.health, this.attack, this.defense, this.skills,
-      {this.mp = 50, this.maxMp = 50}) {
+  Character(
+    this.name,
+    this.health,
+    this.attack,
+    this.defense,
+    this.skills, {
+    this.mp = 50,
+    this.maxMp = 50,
+  }) {
     maxHealth = health;
     for (var skill in skills) {
-      skillLevels[skill] = 1;
+      skillLevels[skill.name] = 1;
     }
   }
 
+  /// 스킬을 강화하는 메서드
   void enhanceSkill(Skill skill) {
-    if (skillLevels.containsKey(skill)) {
-      skillLevels[skill] = (skillLevels[skill] ?? 0) + 1;
+    if (skillLevels.containsKey(skill.name)) {
+      skillLevels[skill.name] = (skillLevels[skill.name] ?? 0) + 1;
     } else {
-      skillLevels[skill] = 1;
+      skillLevels[skill.name] = 1;
     }
-    skill.power += 5; // 스킬 파워 증가
+
+    skill.power += 5;
   }
 
+  /// 스킬을 사용하여 공격하는 메서드
   bool useSkill(Skill skill, Monster target) {
     if (mp >= skill.mpCost) {
       mp -= skill.mpCost;
-      int skillLevel = skillLevels[skill] ?? 1;
+      int skillLevel = skillLevels[skill.name] ?? 1;
       int damage = ((attack + skill.power + (skillLevel * 2)) - target.defense)
           .clamp(0, double.infinity)
           .toInt();
@@ -46,7 +57,7 @@ class Character {
     return false;
   }
 
-  // 레벨 업
+  /// 레벨업 메서드
   void levelUp() {
     level++;
     maxHealth += 10;
@@ -57,13 +68,13 @@ class Character {
     mp = maxMp;
   }
 
-  // 방어 행동
+  /// 방어 메서드
   void defend() {
     int healAmount = (maxHealth * 0.15).round();
     health = (health + healAmount).clamp(0, maxHealth);
   }
 
-  // 아이템 사용
+  /// 아이템 사용 메서드
   void useItem() {
     if (!hasUsedItem) {
       attack *= 2;
@@ -71,81 +82,90 @@ class Character {
     }
   }
 
-  // 상태 표시
+  /// 현재 상태를 출력하는 메서드
   void showStatus() {
     print(
         '$name - HP: $health/$maxHealth, ATK: $attack, DEF: $defense, MP: $mp/$maxMp');
   }
 
-  // 체력 설정
+  /// 건강 상태 설정 메서드
   void setHealth(int newHealth) {
     health = newHealth.clamp(0, maxHealth);
   }
-}
 
-// 몬스터 클래스 정의
-class Monster {
-  String name;
-  String type;
-  late int health;
-  late int maxHealth;
-  int maxAttack;
-  late int attack;
-  int defense;
-  int level;
-  List<Skill> skills;
+  /// 캐릭터를 직렬화하여 문자열로 반환
+  String serialize() {
+    // 스킬들을 직렬화
+    String serializedSkills =
+        skills.map((skill) => skill.serialize()).join(';');
 
-  // 생성자
-  Monster(this.name, this.type, int baseHealth, this.maxAttack, this.level,
-      this.skills,
-      {this.defense = 1}) {
-    this.maxHealth = calculateScaledHealth(baseHealth, level);
-    this.health = this.maxHealth;
-    this.attack = Random().nextInt(maxAttack) + level * 5;
+    // 스킬 레벨들을 직렬화
+    String serializedSkillLevels = skillLevels.entries
+        .map((entry) => '${entry.key}:${entry.value}')
+        .join(';');
+
+    return '$name,$health,$attack,$defense,$hasUsedItem,$level,$serializedSkills,$mp,$maxMp,$serializedSkillLevels';
   }
 
-  int calculateScaledHealth(int baseHealth, int level) {
-    return (baseHealth * (1 + 0.1 * level)).round();
+  /// 직렬화된 문자열로부터 Character 객체를 생성
+  static Character deserialize(String data) {
+    final parts = data.split(',');
+
+    if (parts.length < 10) {
+      throw FormatException('잘못된 Character 데이터 형식');
+    }
+
+    String name = parts[0];
+    int health = int.parse(parts[1]);
+    int attack = int.parse(parts[2]);
+    int defense = int.parse(parts[3]);
+    bool hasUsedItem = parts[4].toLowerCase() == 'true';
+    int level = int.parse(parts[5]);
+
+    // 스킬 복원
+    List<Skill> skills = [];
+    if (parts[6].isNotEmpty) {
+      skills = parts[6].split(';').map((skillStr) {
+        return Skill.deserialize(skillStr);
+      }).toList();
+    }
+
+    int mp = int.parse(parts[7]);
+    int maxMp = int.parse(parts[8]);
+
+    // 스킬 레벨 복원
+    Map<String, int> skillLevels = {};
+    if (parts[9].isNotEmpty) {
+      parts[9].split(';').forEach((skillLevelStr) {
+        final skillParts = skillLevelStr.split(':');
+        if (skillParts.length == 2) {
+          String skillName = skillParts[0];
+          int level = int.parse(skillParts[1]);
+
+          skillLevels[skillName] = level;
+        }
+      });
+    }
+
+    Character character = Character(
+      name,
+      health,
+      attack,
+      defense,
+      skills,
+      mp: mp,
+      maxMp: maxMp,
+    );
+    character.hasUsedItem = hasUsedItem;
+    character.level = level;
+    character.skillLevels = skillLevels;
+
+    return character;
   }
 
-  // 스킬 사용
-  int useSkill(Skill skill, Character target) {
-    int damage = calculateDamage(skill, target);
-    target.setHealth(target.health - damage);
-    return damage;
+  void attackMonster(Monster monster, OutputService outputService) {
+    int damage = (attack - monster.defense).clamp(0, double.infinity).toInt();
+    monster.health -= damage;
+    outputService.displayAttackResult(name, monster.name, damage);
   }
-
-  // 랜덤 스킬 선택
-  Skill chooseRandomSkill() {
-    return skills[Random().nextInt(skills.length)];
-  }
-
-  // 데미지 계산
-  int calculateDamage(Skill skill, Character target) {
-    double effectiveness = 1.0;
-    int baseDamage = ((attack * skill.power) / 100).round();
-    return (baseDamage * effectiveness - target.defense)
-        .clamp(0, double.infinity)
-        .toInt();
-  }
-
-  // 상태 표시
-  void showStatus() {
-    print(
-        '$name ($type) - 체력: $health/$maxHealth, 공격력: $attack, 방어력: $defense');
-  }
-}
-
-// 스킬 효과 타입 정의
-typedef SkillEffect = void Function(Character user, Monster target);
-
-// 스킬 클래스 정의
-class Skill {
-  String name;
-  int power;
-  int mpCost;
-  SkillEffect? effect;
-
-  // 생성자
-  Skill(this.name, this.power, this.mpCost, {this.effect});
 }

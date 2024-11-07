@@ -1,12 +1,14 @@
 // lib/services/input_output.dart
 
 import 'dart:io';
-import '../core/game_engine.dart';
 import '../entities/character.dart';
+import '../entities/monster.dart';
+import '../core/game_state.dart';
+import '../entities/skill.dart';
 
 // 입력 서비스 클래스
 class InputService {
-  String currentLanguage = 'ko';
+  String currentLanguage = 'ko'; // 기본 언어를 한국어로 설정
 
   // 언어 선택
   Future<void> chooseLanguage() async {
@@ -155,6 +157,18 @@ class InputService {
       }
     }
   }
+
+  // 공격 방식 선택
+  Future<String?> getAttackChoice() async {
+    while (true) {
+      stdout.write('공격 방식을 선택하세요 (1-3): ');
+      String? choice = stdin.readLineSync()?.trim();
+      if (choice == '1' || choice == '2' || choice == '3') {
+        return choice;
+      }
+      print('올바른 선택지를 입력해주세요.');
+    }
+  }
 }
 
 // 출력 서비스 클래스
@@ -164,11 +178,6 @@ class OutputService {
   // 현재 언어에 맞는 텍스트 반환
   String getLocalizedText(String koText, String enText) {
     return currentLanguage == 'ko' ? koText : enText;
-  }
-
-  // 언어 설정
-  void setLanguage(String language) {
-    currentLanguage = language;
   }
 
   // 환영 메시지 출력
@@ -187,6 +196,29 @@ class OutputService {
       gameState.currentMonster.showStatus();
     }
     print('===============================\n');
+  }
+
+  // 게임 시작 메시지 출력
+  void displayGameStart() {
+    print('어벤저스 RPG 게임을 시작합니다!');
+    print('지구를 위협하는 빌런들과 맞서 싸우세요!');
+  }
+
+  // 카운트다운 출력
+  void displayCountdown(int seconds) {
+    print('$seconds...');
+  }
+
+  // 몬스터 등장 메시지 출력
+  void displayMonsterAppearance(String monsterName) {
+    print('$monsterName이(가) 출현했습니다!');
+    print('$monsterName: "어벤저스여, 내게 덤벼라!"');
+  }
+
+  // 첫 공격자 메시지 출력
+  void displayFirstAttacker(String characterName) {
+    print('$characterName: "어벤저스 어셈블!"');
+    print('$characterName에게 먼저 공격 기회가 주어졌습니다.');
   }
 
   // 승리 메시지 출력
@@ -228,6 +260,54 @@ class OutputService {
     print('===============================\n');
   }
 
+  // 크리티컬 히트 메시지 출력
+  void displayCriticalHit(String characterName, int damage) {
+    print('크리티컬 히트! $characterName의 강력한 일격으로 $damage의 데미지를 입혔습니다!');
+  }
+
+  // 속성 효과 메시지 출력
+  void displayElementalEffect(String attackerName, String defenderName,
+      String element, bool isEffective) {
+    if (isEffective) {
+      print('$attackerName의 $element 속성 공격이 $defenderName에게 효과적입니다!');
+    } else {
+      print('$attackerName의 $element 속성 공격이 $defenderName에게 효과가 떨어집니다.');
+    }
+  }
+
+  void displaySkillEnhanced(Character character, Skill skill) {
+    print(getLocalizedText('${character.name}의 스킬 "${skill.name}"이(가) 강화되었습니다!',
+        '${character.name}\'s skill "${skill.name}" has been enhanced!'));
+  }
+
+  // 경험치 획득 메시지 출력
+  void displayExperienceGained(int exp) {
+    print('전투 승리! $exp 경험치를 획득했습니다.');
+  }
+
+  // 레벨업 메시지 출력
+  void displayLevelUp(Character character) {
+    print('축하합니다! ${character.name}의 레벨이 ${character.level}(으)로 올랐습니다!');
+    print('모든 능력치가 상승했습니다!');
+  }
+
+  // 아이템 드롭 메시지 출력
+  void displayItemDropped(String itemName) {
+    print('$itemName을(를) 획득했습니다!');
+  }
+
+  // 퀘스트 시작 메시지 출력
+  void displayQuestStart(String questName) {
+    print('새로운 퀘스트: $questName');
+    print('퀘스트를 완료하면 특별한 보상이 기다리고 있습니다!');
+  }
+
+  // 퀘스트 완료 메시지 출력
+  void displayQuestComplete(String questName, String reward) {
+    print('퀘스트 완료: $questName');
+    print('보상으로 $reward을(를) 획득했습니다!');
+  }
+
   // 모든 스킬 습득 메시지 출력
   void displayAllSkillsLearned() {
     print('모든 스킬을 이미 습득했습니다.');
@@ -251,32 +331,21 @@ class OutputService {
   // 전투 승리 메시지 출력
   void displayBattleWon(String characterName, String monsterName) {
     print('$characterName이(가) $monsterName을(를) 물리쳤습니다!');
-    print('$characterName has defeated $monsterName!');
   }
 
   // 전투 패배 메시지 출력
   void displayBattleLost(String characterName) {
     print('$characterName이(가) 전투에서 패배했습니다.');
-    print('$characterName has been defeated in battle.');
   }
 
   // 게임 오버 메시지 출력
   void displayGameOverMessage() {
     print('게임 오버! 다음에 다시 도전해주세요.');
-    print('Game Over! Please try again next time.');
   }
 
   // 몬스터 처치 메시지 출력
   void displayMonsterDefeated(Monster monster) {
     print('${monster.name}을(를) 물리쳤습니다!');
-    print('You have defeated ${monster.name}!');
-  }
-
-  // 레벨 업 메시지 출력
-  void displayLevelUp(Character character) {
-    print('${character.name}의 레벨이 올랐습니다! 현재 레벨: ${character.level}');
-    print(
-        '${character.name} has leveled up! Current level: ${character.level}');
   }
 
   // 전투 상태 출력
@@ -284,7 +353,6 @@ class OutputService {
     print('\n===== 전투 상태 / Battle Status =====');
     character.showStatus();
     monster.showStatus();
-    print('===============================\n');
   }
 
   // 방어 행동 메시지 출력
@@ -316,7 +384,6 @@ class OutputService {
   // 게임 종료 메시지 출력
   void displayGameEndMessage() {
     print('게임을 종료합니다. 이용해 주셔서 감사합니다!');
-    print('Game over. Thank you for playing!');
   }
 
   // 저장된 게임 없음 메시지 출력
@@ -329,99 +396,7 @@ class OutputService {
   void displaySkillList(List<Skill> skills) {
     print(getLocalizedText('\n사용 가능한 스킬:', '\nAvailable skills:'));
     for (int i = 0; i < skills.length; i++) {
-      print('${i + 1}. ${skills[i].name} (MP 소모: ${skills[i].mpCost})');
+      print('${i + 1}. ${skills[i].name} (MP 소모:${skills[i].mpCost})');
     }
-  }
-
-  // 스킬 사용 결과 표시
-  void displaySkillUseResult(
-      Character character, Monster monster, Skill skill) {
-    print('${character.name}이(가) ${skill.name} 스킬을 사용했습니다!');
-    print('${monster.name}에게 ${skill.power}의 데미지를 입혔습니다!');
-  }
-
-  // MP 부족 메시지 표시
-  void displayNotEnoughMP() {
-    print(getLocalizedText(
-        'MP가 부족하여 스킬을 사용할 수 없습니다.', 'Not enough MP to use the skill.'));
-  }
-
-  // 잘못된 스킬 선택 메시지 표시
-  void displayInvalidSkillChoice() {
-    print(getLocalizedText('잘못된 스킬 선택입니다. 다시 선택해주세요.',
-        'Invalid skill choice. Please choose again.'));
-  }
-
-  // 몬스터의 스킬 사용 결과 표시
-  void displayMonsterSkillUse(
-      Monster monster, Character character, Skill skill, int damage) {
-    print('${monster.name}이(가) ${skill.name} 스킬을 사용했습니다!');
-    print('${character.name}에게 $damage의 데미지를 입혔습니다!');
-  }
-
-  // 레벨업 시 새로운 스킬 획득 메시지 표시
-  void displayNewSkillAcquired(Character character, Skill newSkill) {
-    print('${character.name}이(가) 레벨업으로 새로운 스킬 "${newSkill.name}"을(를) 획득했습니다!');
-    print(
-        '${character.name} has acquired a new skill "${newSkill.name}" upon leveling up!');
-  }
-
-  // 게임 진행 상황 요약 표시
-  void displayGameSummary(GameState gameState) {
-    print('\n===== ${getLocalizedText("게임 진행 상황", "Game Progress")} =====');
-    print(getLocalizedText("총 플레이 시간", "Total Play Time") +
-        ': ${gameState.playTime}');
-    print(getLocalizedText("처치한 몬스터 수", "Monsters Defeated") +
-        ': ${gameState.monstersDefeated}');
-    print(getLocalizedText("획득한 경험치", "Experience Gained") +
-        ': ${gameState.experienceGained}');
-    print('===============================\n');
-  }
-
-  void displaySkillEnhanced(Character character, Skill skill) {
-    print('${character.name}의 "${skill.name}" 스킬이 강화되었습니다!');
-    print('${character.name}\'s "${skill.name}" skill has been enhanced!');
-  }
-
-  // 아이템 획득 메시지 표시
-  void displayItemAcquired(String itemName) {
-    print(getLocalizedText('새로운 아이템을 획득했습니다: $itemName',
-        'You have acquired a new item: $itemName'));
-  }
-
-  // 인벤토리 표시
-  void displayInventory(List<String> items) {
-    print('\n===== ${getLocalizedText("인벤토리", "Inventory")} =====');
-    if (items.isEmpty) {
-      print(getLocalizedText('인벤토리가 비어있습니다.', 'Your inventory is empty.'));
-    } else {
-      for (int i = 0; i < items.length; i++) {
-        print('${i + 1}. ${items[i]}');
-      }
-    }
-    print('===============================\n');
-  }
-
-  // 게임 저장 확인 메시지 표시
-  void displaySaveConfirmation() {
-    print(getLocalizedText(
-        '게임을 저장하시겠습니까? (y/n)', 'Do you want to save the game? (y/n)'));
-  }
-
-  // 게임 불러오기 확인 메시지 표시
-  void displayLoadConfirmation() {
-    print(getLocalizedText(
-        '저장된 게임을 불러오시겠습니까? (y/n)', 'Do you want to load a saved game? (y/n)'));
-  }
-
-  // 게임 설정 메뉴 표시
-  void displaySettingsMenu() {
-    print('\n===== ${getLocalizedText("게임 설정", "Game Settings")} =====');
-    print('1. ${getLocalizedText("언어 변경", "Change Language")}');
-    print('2. ${getLocalizedText("음악 켜기/끄기", "Toggle Music")}');
-    print('3. ${getLocalizedText("효과음 켜기/끄기", "Toggle Sound Effects")}');
-    print('4. ${getLocalizedText("난이도 조절", "Adjust Difficulty")}');
-    print('5. ${getLocalizedText("돌아가기", "Back")}');
-    print('===============================\n');
   }
 }

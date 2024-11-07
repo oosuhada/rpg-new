@@ -1,4 +1,4 @@
-IronMan,100,25,10
-CaptainAmerica,120,20,15
-BlackWidow,90,30,8
-Thor,110,35,12
+IronMan,100,25,10,50,Repulsor Blast:20:Tech,Unibeam:30:Tech,Mark L Armor:40:Tech
+CaptainAmerica,120,20,15,40,Shield Throw:18:Physical,Vibranium Shield:25:Physical,Avengers Assemble:35:Leadership
+BlackWidow,90,30,8,60,Widow's Bite:22:Tech,Acrobatic Strike:28:Physical,Red Room Training:32:Skill
+Thor,110,35,12,70,Mjolnir Throw:30:Lightning,God Blast:40:Lightning,Odinforce:50:Cosmic
