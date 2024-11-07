@@ -21,17 +21,20 @@ class GameEngine {
   List<Monster> monsters = [];
   List<Skill> allSkills = [];
 
-  GameEngine(this.inputService, this.outputService) {
-    saveLoadService = SaveLoadService();
-    gameState = GameState();
-    battleSystem = BattleSystem(inputService, outputService);
-  }
+  GameEngine(this.inputService, this.outputService);
 
   Future<void> initialize() async {
     try {
+      saveLoadService = SaveLoadService();
       await loadCharacters();
       await loadMonsters();
       await inputService.chooseLanguage();
+
+      Character selectedCharacter = await inputService.chooseCharacter();
+      Monster firstMonster = monsters.first;
+
+      gameState = GameState(selectedCharacter, firstMonster);
+      battleSystem = BattleSystem(inputService, outputService);
     } catch (e) {
       print("초기화 중 오류가 발생했습니다: $e");
       exit(1);
@@ -63,22 +66,37 @@ class GameEngine {
     try {
       final file = File('data/monsters.txt');
       final lines = await file.readAsLines();
-      monsters = lines.map((line) {
-        final parts = line.split(',');
-        final monsterSkills = parts.sublist(5).map((skillInfo) {
-          final skillParts = skillInfo.split(':');
-          return Skill(skillParts[0], int.parse(skillParts[1]));
-        }).toList();
-        allSkills.addAll(monsterSkills);
-        return Monster(
-          parts[0],
-          parts[1],
-          int.parse(parts[2]),
-          int.parse(parts[3]),
-          int.parse(parts[4]),
-          monsterSkills,
-        );
-      }).toList();
+      monsters = lines
+          .map((line) {
+            final parts = line.split(',');
+            if (parts.length < 5) {
+              print("Warning: Invalid monster data: $line");
+              return null;
+            }
+            List<Skill> monsterSkills = parts
+                .sublist(5)
+                .map((skillInfo) {
+                  final skillParts = skillInfo.split(':');
+                  if (skillParts.length < 3) {
+                    print("Warning: Invalid skill data: $skillInfo");
+                    return null;
+                  }
+                  return Skill(skillParts[0], int.parse(skillParts[1]));
+                })
+                .whereType<Skill>()
+                .toList();
+
+            return Monster(
+              parts[0],
+              parts[1],
+              int.parse(parts[2]),
+              int.parse(parts[3]),
+              int.parse(parts[4]),
+              monsterSkills,
+            );
+          })
+          .whereType<Monster>()
+          .toList();
     } catch (e) {
       print("몬스터 로딩 중 오류가 발생했습니다: $e");
       throw e;

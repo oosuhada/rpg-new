@@ -10,6 +10,8 @@ class GameState {
   int stage = 1;
   bool isGameOver = false;
 
+  GameState(this.currentCharacter, this.currentMonster);
+
   void initialize(Character character, Monster monster) {
     currentCharacter = character;
     currentMonster = monster;
