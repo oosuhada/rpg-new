@@ -1,6 +1,5 @@
 import 'core/game_engine.dart';
-import 'services/input_service.dart';
-import 'services/output_service.dart';
+import 'services/input_output.dart';
 
 void main() async {
   final inputService = InputService();
@@ -8,12 +7,7 @@ void main() async {
   final gameEngine = GameEngine(inputService, outputService);
 
   await gameEngine.initialize();
-
-  bool playAgain = true;
-  while (playAgain) {
-    gameEngine.start();
-    playAgain = await inputService.askToRetry();
-  }
+  await gameEngine.start();
 
   print('게임을 종료합니다. 이용해 주셔서 감사합니다!');
   print('Game over. Thank you for playing!');

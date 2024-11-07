@@ -1,71 +1,15 @@
+// lib/services/save_load_service.dart
+
 import 'dart:io';
-import '../core/game_state.dart';
+import '../core/game_engine.dart';
+import '../entities/character.dart';
+import '../services/input_output.dart';
 
 class SaveLoadService {
-  final String saveFilePath = 'game_save.json';
-
-  void saveGameState(GameState gameState) {
-    try {
-      final Map<String, dynamic> saveData = {
-        'level': gameState.level,
-        'stage': gameState.stage,
-        'character': {
-          'name': gameState.currentCharacter.name,
-          'health': gameState.currentCharacter.health,
-          'maxHealth': gameState.currentCharacter.maxHealth,
-          'attack': gameState.currentCharacter.attack,
-          'defense': gameState.currentCharacter.defense,
-          'level': gameState.currentCharacter.level,
-          'skills': gameState.currentCharacter.skills
-              .map((skill) => {
-                    'name': skill.name,
-                    'power': skill.power,
-                  })
-              .toList(),
-        },
-        'monster': gameState.currentMonster != null
-            ? {
-                'name': gameState.currentMonster.name,
-                'type': gameState.currentMonster.type,
-                'health': gameState.currentMonster.health,
-                'maxHealth': gameState.currentMonster.maxHealth,
-                'attack': gameState.currentMonster.attack,
-                'defense': gameState.currentMonster.defense,
-              }
-            : null,
-      };
-
-      final String jsonString = json.encode(saveData);
-      File(saveFilePath).writeAsStringSync(jsonString);
-      print('게임 상태가 성공적으로 저장되었습니다.');
-    } catch (e) {
-      print('게임 상태 저장 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  GameState? loadGameState() {
-    try {
-      if (!File(saveFilePath).existsSync()) {
-        print('저장된 게임 상태가 없습니다.');
-        return null;
-      }
-
-      final String jsonString = File(saveFilePath).readAsStringSync();
-      final Map<String, dynamic> saveData = json.decode(jsonString);
-
-      // 여기에 GameState 객체를 생성하고 반환하는 로직을 구현해야 합니다.
-      // 이 부분은 GameState 클래스의 생성자나 팩토리 메서드를 사용하여 구현할 수 있습니다.
-
-      print('게임 상태를 성공적으로 불러왔습니다.');
-      return null; // 실제 구현에서는 GameState 객체를 반환해야 합니다.
-    } catch (e) {
-      print('게임 상태 불러오기 중 오류가 발생했습니다: $e');
-      return null;
-    }
-  }
+  final String resultFilePath = 'data/result.txt';
 
   void saveGameResult(GameState gameState) {
-    final file = File(filePath);
+    final file = File(resultFilePath);
     final sink = file.openWrite(mode: FileMode.append);
     sink.writeln('게임 결과 / Game Result:');
     sink.writeln('캐릭터 / Character: ${gameState.currentCharacter.name}');
@@ -75,21 +19,34 @@ class SaveLoadService {
     sink.close();
   }
 
-  Future<List<String>> loadGameResults() async {
-    final file = File(filePath);
+  Future<List<String>> loadRecentGameResults() async {
+    final file = File(resultFilePath);
     if (await file.exists()) {
-      return await file.readAsLines();
+      List<String> allLines = await file.readAsLines();
+      List<String> recentResults = [];
+      int count = 0;
+      for (int i = allLines.length - 1; i >= 0 && count < 5; i--) {
+        if (allLines[i].startsWith('게임 결과 / Game Result:')) {
+          recentResults.add(allLines[i]);
+          recentResults.add(allLines[i + 1]);
+          recentResults.add(allLines[i + 2]);
+          recentResults.add(allLines[i + 3]);
+          recentResults.add('---');
+          count++;
+        }
+      }
+      return recentResults.reversed.toList();
     } else {
       return [];
     }
   }
 
-  void displayGameResults() async {
-    final results = await loadGameResults();
+  void displayRecentGameResults() async {
+    final results = await loadRecentGameResults();
     if (results.isEmpty) {
       print('게임 결과가 없습니다. / No game results available.');
     } else {
-      print('이전 게임 결과 / Previous Game Results:');
+      print('최근 5개 게임 결과 / Recent 5 Game Results:');
       for (var result in results) {
         print(result);
       }
@@ -97,8 +54,70 @@ class SaveLoadService {
   }
 
   void clearGameResults() {
-    final file = File(filePath);
+    final file = File(resultFilePath);
     file.writeAsStringSync('');
     print('게임 결과가 초기화되었습니다. / Game results have been cleared.');
+  }
+
+  // 게임 상태 저장 및 불러오기 메서드 추가
+  void saveGameState(GameState gameState, String playerName) {
+    final file = File(resultFilePath);
+    final sink = file.openWrite(mode: FileMode.write);
+    sink.writeln('게임 상태 / Game State:');
+    sink.writeln('플레이어 / Player: $playerName');
+    sink.writeln('캐릭터 / Character: ${gameState.currentCharacter.name}');
+    sink.writeln('레벨 / Level: ${gameState.level}');
+    sink.writeln('스테이지 / Stage: ${gameState.stage}');
+    sink.writeln('체력 / Health: ${gameState.currentCharacter.health}');
+    sink.writeln('---');
+    sink.close();
+    print('게임 상태가 저장되었습니다. / Game state has been saved.');
+  }
+
+  GameState? loadGameState(String playerName) {
+    final file = File(resultFilePath);
+    if (!file.existsSync()) {
+      return null;
+    }
+
+    List<String> lines = file.readAsLinesSync();
+    if (lines.isEmpty || !lines[0].startsWith('게임 상태 / Game State:')) {
+      return null;
+    }
+
+    String? savedPlayerName;
+    String? characterName;
+    int level = 1;
+    int stage = 1;
+    int health = 100;
+
+    for (String line in lines) {
+      if (line.startsWith('플레이어 / Player:')) {
+        savedPlayerName = line.split(':')[1].trim();
+      } else if (line.startsWith('캐릭터 / Character:')) {
+        characterName = line.split(':')[1].trim();
+      } else if (line.startsWith('레벨 / Level:')) {
+        level = int.parse(line.split(':')[1].trim());
+      } else if (line.startsWith('스테이지 / Stage:')) {
+        stage = int.parse(line.split(':')[1].trim());
+      } else if (line.startsWith('체력 / Health:')) {
+        health = int.parse(line.split(':')[1].trim());
+      }
+    }
+
+    if (savedPlayerName != playerName) {
+      return null;
+    }
+
+    if (characterName != null) {
+      Character character = Character(characterName, health, 10, 5, []);
+      Monster dummyMonster = Monster('Dummy', 'Normal', 50, 10, 1, []);
+      GameState loadedState = GameState(character, dummyMonster);
+      loadedState.level = level;
+      loadedState.stage = stage;
+      return loadedState;
+    } else {
+      return null;
+    }
   }
 }

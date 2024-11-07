@@ -1,4 +1,4 @@
-IronMan,Technology,100,25,10
-CaptainAmerica,Strength,120,20,15
-BlackWidow,Speed,90,30,8
-Thor,Lightning,110,35,12
+IronMan,100,25,10
+CaptainAmerica,120,20,15
+BlackWidow,90,30,8
+Thor,110,35,12
