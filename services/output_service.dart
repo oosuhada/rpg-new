@@ -23,6 +23,10 @@ class OutputService {
     print('레벨 / Level: ${gameState.level}');
     print('스테이지 / Stage: ${gameState.stage}');
     gameState.currentCharacter.showStatus();
+    if (gameState.currentMonster != null) {
+      gameState.currentMonster.showStatus();
+    }
+    print('===============================\n');
   }
 
   void displayBattleStart(Character character, Monster monster) {
@@ -35,9 +39,10 @@ class OutputService {
     print("It's ${character.name}'s turn.");
   }
 
-  void displayAttackResult(String attacker, String defender, int damage) {
-    print('$attacker가 $defender에게 $damage의 데미지를 입혔습니다!');
-    print('$attacker dealt $damage damage to $defender!');
+  void displayAttackResult(dynamic attacker, dynamic defender, int damage) {
+    String attackerName = attacker is String ? attacker : attacker.name;
+    String defenderName = defender is String ? defender : defender.name;
+    print('$attackerName이(가) $defenderName에게 $damage의 데미지를 입혔습니다!');
   }
 
   void displayBattleWon(String characterName, String monsterName) {
@@ -69,5 +74,33 @@ class OutputService {
   void displayNewSkillLearned(Character character, Skill skill) {
     print('${character.name}이(가) 새로운 스킬 ${skill.name}을(를) 배웠습니다!');
     print('스킬 정보: 위력 ${skill.power}');
+  }
+
+  void displayBattleStatus(Character character, Monster monster) {
+    print('\n===== 전투 상태 / Battle Status =====');
+    character.showStatus();
+    monster.showStatus();
+    print('===============================\n');
+  }
+
+  void displayDefendAction(Character character) {
+    print('${character.name}이(가) 방어 태세를 취했습니다.');
+  }
+
+  void displayUseItemAction(Character character) {
+    print('${character.name}이(가) 아이템을 사용했습니다.');
+  }
+
+  void displayInvalidActionMessage() {
+    print('잘못된 행동입니다. 다시 선택해주세요.');
+  }
+
+  void displayGameSaved() {
+    print("게임이 저장되었습니다.");
+  }
+
+  void displayGameEndMessage() {
+    print('게임을 종료합니다. 이용해 주셔서 감사합니다!');
+    print('Game over. Thank you for playing!');
   }
 }

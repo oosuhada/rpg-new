@@ -31,12 +31,16 @@ class InputService {
   String getPlayerAction() {
     while (true) {
       try {
-        stdout.write("액션을 선택하세요 (1: 공격, 2: 방어, 3: 아이템 사용, reset: 게임 종료): ");
+        stdout.write(getLocalizedText(
+            "액션을 선택하세요 (1: 공격, 2: 방어, 3: 아이템 사용, reset: 게임 종료): ",
+            "Choose an action (1: Attack, 2: Defend, 3: Use Item, reset: End Game): "));
         String? input = stdin.readLineSync()?.toLowerCase().trim();
         if (input == 'reset' || ['1', '2', '3'].contains(input)) return input!;
-        print('올바른 행동을 선택해주세요.');
+        print(getLocalizedText(
+            '올바른 행동을 선택해주세요.', 'Please choose a valid action.'));
       } catch (e) {
-        print("입력 처리 중 오류가 발생했습니다: $e");
+        print(getLocalizedText("입력 처리 중 오류가 발생했습니다: $e",
+            "An error occurred while processing input: $e"));
       }
     }
   }
@@ -83,7 +87,13 @@ class InputService {
     }
   }
 
-  Future<bool> askToRetry() async {
+  bool askToSave() {
+    print("레벨업을 했습니다. 게임을 저장하시겠습니까? (y/n)");
+    String response = stdin.readLineSync()?.toLowerCase() ?? 'n';
+    return response == 'y';
+  }
+
+  bool askToRetry() {
     while (true) {
       try {
         stdout.write('게임을 다시 시작하시겠습니까? (y/n): ');

@@ -8,8 +8,8 @@ import '../entities/skill.dart';
 import '../services/input_service.dart';
 import '../services/output_service.dart';
 import '../services/save_load_service.dart';
-import 'game_state.dart';
-import 'battle_system.dart';
+import '../core/game_state.dart';
+import '../core/battle_system.dart';
 
 class GameEngine {
   final InputService inputService;
@@ -103,6 +103,21 @@ class GameEngine {
     }
   }
 
+  void start() {
+    outputService.displayWelcomeMessage();
+
+    if (inputService.askToLoadGame()) {
+      GameState? loadedState = saveLoadService.loadGameState();
+      if (loadedState != null) {
+        gameState = loadedState;
+        outputService.displayGameLoaded();
+      }
+    }
+
+    outputService.displayGameStatus(gameState);
+    mainGameLoop();
+  }
+
   List<Skill> getRandomSkills(int count) {
     List<Skill> selectedSkills = [];
     for (int i = 0; i < count; i++) {
@@ -111,22 +126,19 @@ class GameEngine {
     return selectedSkills;
   }
 
-  void start() {
-    outputService.displayWelcomeMessage();
-    mainGameLoop();
-  }
-
   void mainGameLoop() {
     while (!gameState.isGameOver) {
       outputService.displayGameStatus(gameState);
       final action = inputService.getPlayerAction();
-      executeAction(action);
+      if (executeAction(action)) {
+        break; // 게임 종료 시 루프 탈출
+      }
       updateGameState();
     }
     endGame();
   }
 
-  void executeAction(String action) {
+  bool executeAction(String action) {
     switch (action) {
       case '1':
         battleSystem.startBattle(
@@ -140,28 +152,49 @@ class GameEngine {
         break;
       case 'reset':
         gameState.setGameOver();
-        break;
+        return true; // 게임 종료 신호 반환
+      default:
+        outputService.displayInvalidActionMessage();
     }
+    return false;
   }
 
   void updateGameState() {
     if (gameState.currentMonster.health <= 0) {
       outputService.displayMonsterDefeated(gameState.currentMonster);
       gameState.clearStage();
-      if (gameState.stage > 3) {
-        gameState.levelUp();
+
+      int oldLevel = gameState.currentCharacter.level;
+      gameState.levelUp();
+
+      if (gameState.currentCharacter.level > oldLevel) {
         outputService.displayLevelUp(gameState.currentCharacter);
         addNewSkill(gameState.currentCharacter);
+
+        if (inputService.askToSave()) {
+          saveLoadService.saveGameState(gameState);
+          outputService.displayGameSaved();
+        }
       }
-      gameState.currentMonster = monsters[gameState.level - 1];
+
+      if (monsters.isNotEmpty) {
+        gameState.currentMonster = monsters[Random().nextInt(monsters.length)];
+      } else {
+        print("No more monsters available. Game Over!");
+        gameState.isGameOver = true;
+      }
     }
 
     if (gameState.currentCharacter.health <= 0) {
-      gameState.setGameOver();
+      gameState.isGameOver = true;
     }
   }
 
   void addNewSkill(Character character) {
+    if (allSkills.isEmpty) {
+      print("No skills available to add.");
+      return;
+    }
     Skill newSkill = allSkills[Random().nextInt(allSkills.length)];
     character.skills.add(newSkill);
     outputService.displayNewSkillLearned(character, newSkill);
@@ -170,5 +203,13 @@ class GameEngine {
   void endGame() {
     outputService.displayGameOverMessage();
     saveLoadService.saveGameResult(gameState);
+    if (inputService.askToRetry()) {
+      // 게임 재시작 로직
+      initialize();
+      start();
+    } else {
+      outputService.displayGameEndMessage();
+      exit(0); // 프로그램 종료
+    }
   }
 }
