@@ -184,7 +184,7 @@ class GameEngine {
       gameState.levelUp();
       if (gameState.currentCharacter.level > oldLevel) {
         outputService.displayLevelUp(gameState.currentCharacter);
-        addNewSkill(gameState.currentCharacter);
+        enhanceRandomSkill(gameState.currentCharacter);
         if (inputService.askToSave()) {
           saveLoadService.saveGameState(gameState, playerName!);
           outputService.displayGameSaved();
@@ -192,6 +192,12 @@ class GameEngine {
       }
       if (monsters.isNotEmpty) {
         gameState.currentMonster = monsters[Random().nextInt(monsters.length)];
+        // 몬스터의 레벨과 HP를 플레이어 레벨에 맞게 조정
+        gameState.currentMonster.level = gameState.level;
+        gameState.currentMonster.maxHealth = gameState.currentMonster
+            .calculateScaledHealth(
+                gameState.currentMonster.maxHealth, gameState.level);
+        gameState.currentMonster.health = gameState.currentMonster.maxHealth;
       } else {
         print("더 이상 몬스터가 없습니다. 게임 종료!");
         gameState.isGameOver = true;
@@ -200,6 +206,17 @@ class GameEngine {
     if (gameState.currentCharacter.health <= 0) {
       gameState.isGameOver = true;
     }
+  }
+
+  void enhanceRandomSkill(Character character) {
+    if (character.skills.isEmpty) {
+      outputService.displayNoSkillsAvailable();
+      return;
+    }
+    Skill skillToEnhance =
+        character.skills[Random().nextInt(character.skills.length)];
+    character.enhanceSkill(skillToEnhance);
+    outputService.displaySkillEnhanced(character, skillToEnhance);
   }
 
   void addNewSkill(Character character) {
@@ -232,21 +249,41 @@ class BattleSystem {
 
   Future<void> startBattle(Character character, Monster monster) async {
     outputService.displayBattleStart(character, monster);
+    await Future.delayed(Duration(seconds: 2));
+
     while (character.health > 0 && monster.health > 0) {
-      // 플레이어 턴
-      outputService.displayCharacterTurn(character);
-      String action = await inputService.getPlayerAction();
-      await executeAction(action, character, monster);
+      await _characterTurn(character, monster);
       if (monster.health <= 0) break;
 
-      // 몬스터 턴
-      outputService.displayMonsterTurn(monster);
-      await monsterTurn(character, monster);
+      await _monsterTurn(character, monster);
       if (character.health <= 0) break;
 
       outputService.displayBattleStatus(character, monster);
+      await Future.delayed(Duration(seconds: 1));
     }
+
     handleBattleResult(character, monster);
+  }
+
+  Future<void> _characterTurn(Character character, Monster monster) async {
+    outputService.displayCharacterTurn(character);
+    String action = await inputService.getPlayerAction();
+    print('');
+    await Future.delayed(Duration(seconds: 1));
+    await executeAction(action, character, monster);
+  }
+
+  Future<void> _monsterTurn(Character character, Monster monster) async {
+    outputService.displayMonsterTurn(monster);
+    await Future.delayed(Duration(seconds: 2));
+    int damage = monster.attack - character.defense;
+    if (damage > 0) {
+      character.health -= damage;
+      outputService.displayAttackResult(monster, character, damage);
+    } else {
+      outputService.displayAttackResult(monster, character, 0);
+    }
+    print('');
   }
 
   Future<void> executeAction(
@@ -325,6 +362,11 @@ class GameState {
   int stage;
   bool isGameOver;
 
+  // 새로 추가된 속성들
+  Duration playTime = Duration.zero;
+  int monstersDefeated = 0;
+  int experienceGained = 0;
+
   GameState(this.currentCharacter, this.currentMonster,
       {this.level = 1, this.stage = 1, this.isGameOver = false});
 
@@ -336,9 +378,16 @@ class GameState {
 
   void clearStage() {
     stage++;
+    monstersDefeated++; // 스테이지를 클리어할 때마다 처치한 몬스터 수 증가
+    experienceGained += 10; // 경험치 증가 (예시 값)
   }
 
   void setGameOver() {
     isGameOver = true;
+  }
+
+  // 플레이 시간 업데이트 메서드
+  void updatePlayTime(Duration elapsed) {
+    playTime += elapsed;
   }
 }

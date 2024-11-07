@@ -1,0 +1,7 @@
+게임 상태 / Game State:
+플레이어 / Player: dd
+캐릭터 / Character: IronMan
+레벨 / Level: 4
+스테이지 / Stage: 1
+체력 / Health: 130
+---

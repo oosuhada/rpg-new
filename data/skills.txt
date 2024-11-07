@@ -1,0 +1,9 @@
+BatarangThrow,25,10
+GrapplingHook,20,8
+SmokeScreen,15,5
+WebShot,30,12
+SpiderSense,25,10
+WebSwing,20,8
+HeatVision,35,15
+SuperPunch,30,12
+FrostBreath,25,10
