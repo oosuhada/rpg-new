@@ -58,6 +58,7 @@ class InputService {
 
   // 플레이어 행동 입력 받기
   String getPlayerAction() {
+    print("[DEBUG] getPlayerAction() 메서드 호출");
     while (true) {
       try {
         stdout.write(getLocalizedText(
@@ -67,9 +68,11 @@ class InputService {
         if (input == 'reset' || ['1', '2', '3'].contains(input)) return input!;
         print(getLocalizedText(
             '올바른 행동을 선택해주세요.', 'Please choose a valid action.'));
+        print("[DEBUG] 잘못된 액션 입력: $input");
       } catch (e) {
         print(getLocalizedText("입력 처리 중 오류가 발생했습니다: $e",
             "An error occurred while processing input: $e"));
+        print("[DEBUG] 예외 발생: $e");
       }
     }
   }
@@ -164,10 +167,12 @@ class InputService {
     while (true) {
       stdout.write('공격 방식을 선택하세요 (1: 기본 공격, 2: 스킬 사용): ');
       String? choice = stdin.readLineSync()?.trim();
+
       if (choice == '1' || choice == '2') {
         return choice;
+      } else {
+        print('올바른 선택지를 입력해주세요.');
       }
-      print('올바른 선택지를 입력해주세요.');
     }
   }
 }
@@ -183,12 +188,14 @@ class OutputService {
 
   // 환영 메시지 출력
   void displayWelcomeMessage(String playerName) {
+    print("[DEBUG] displayWelcomeMessage() 호출");
     print(getLocalizedText("$playerName님, RPG 게임에 오신 것을 환영합니다!",
         "Welcome to the RPG game, $playerName!"));
   }
 
   // 게임 상태 출력
   void displayGameStatus(GameState gameState) {
+    print("[DEBUG] displayGameStatus() 호출");
     print('\n===== ${getLocalizedText("게임 상태", "Game Status")} =====');
     print(getLocalizedText("레벨", "Level") + ': ${gameState.level}');
     print(getLocalizedText("스테이지", "Stage") + ': ${gameState.stage}');
@@ -197,6 +204,18 @@ class OutputService {
       gameState.currentMonster.showStatus();
     }
     print('===============================\n');
+  }
+
+  void displayBattleStart(Character character, Monster monster) {
+    print("[DEBUG] displayBattleStart() 호출");
+    print('\n${character.name}와(과) ${monster.name}의 전투가 시작되었습니다!');
+    print('${character.name} and ${monster.name} start battling!');
+  }
+
+  void displayCharacterTurn(Character character) {
+    print("[DEBUG] displayCharacterTurn() 호출");
+    print('\n${character.name}의 턴입니다.');
+    print("It's ${character.name}'s turn.");
   }
 
   // 게임 시작 메시지 출력
@@ -230,18 +249,6 @@ class OutputService {
   // 패배 메시지 출력
   void displayDefeatMessage() {
     print("게임 오버! 몬스터에게 패배했습니다.");
-  }
-
-  // 전투 시작 메시지 출력
-  void displayBattleStart(Character character, Monster monster) {
-    print('\n${character.name}와(과) ${monster.name}의 전투가 시작되었습니다!');
-    print('${character.name} and ${monster.name} start battling!');
-  }
-
-  // 캐릭터 턴 메시지 출력
-  void displayCharacterTurn(Character character) {
-    print('\n${character.name}의 턴입니다.');
-    print("It's ${character.name}'s turn.");
   }
 
   // 공격 결과 출력

@@ -58,28 +58,48 @@ class GameEngine {
   }
 
   // Start game
-  Future<void> start() async {
+  // game_engine.dart
+
+  Future start() async {
+    print("[DEBUG] start() 메서드 호출"); // 디버깅용
     bool playAgain = true;
+
     while (playAgain) {
       outputService.displayWelcomeMessage(playerName!);
+      print("[DEBUG] displayWelcomeMessage() 호출 완료");
 
-      GameState? loadedState = saveLoadService.loadGameState(
-          characters, monsters); // Corrected signature
+      GameState? loadedState =
+          saveLoadService.loadGameState(characters, monsters);
+      print("[DEBUG] loadGameState() 호출 완료: ${loadedState != null}");
+
       if (loadedState != null) {
         gameState = loadedState;
         outputService.displayGameLoaded();
+        print("[DEBUG] displayGameLoaded() 호출 완료");
       } else {
         outputService.displayNoSavedGame();
+        print("[DEBUG] displayNoSavedGame() 호출 완료");
+
         Character selectedCharacter =
             await inputService.chooseCharacter(characters);
+        print("[DEBUG] chooseCharacter() 호출 완료: ${selectedCharacter.name}");
+
         Monster firstMonster = monsters.first;
         gameState = GameState(selectedCharacter, firstMonster, characters);
+
         outputService.displayGameStatus(gameState);
+        print("[DEBUG] displayGameStatus() 호출 완료");
+
         await mainGameLoop();
+        print("[DEBUG] mainGameLoop() 호출 완료");
       }
+
       playAgain = inputService.askToRetry();
+      print("[DEBUG] askToRetry() 호출 완료: $playAgain");
+
       if (playAgain) {
         await initialize();
+        print("[DEBUG] initialize() 재호출 완료");
       }
     }
   }
