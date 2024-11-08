@@ -45,3 +45,11 @@
 처치한 몬스터 수 / Monsters Defeated: 0
 획득한 경험치 / Experience Gained: 0
 ---
+게임 결과 / Game Result:
+캐릭터 / Character: IronMan
+레벨 / Level: 1
+스테이지 / Stage: 1
+플레이 시간 / Play Time: 0:00:00.000000
+처치한 몬스터 수 / Monsters Defeated: 0
+획득한 경험치 / Experience Gained: 0
+---

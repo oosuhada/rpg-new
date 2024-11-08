@@ -113,6 +113,25 @@ class InputService {
     }
   }
 
+  int getSkillChoice(int skillCount) {
+    while (true) {
+      try {
+        stdout.write(getLocalizedText(
+            '사용할 스킬 번호를 선택하세요: ', 'Choose the number of the skill to use: '));
+        String? choice = stdin.readLineSync()?.trim();
+        int? index = int.tryParse(choice ?? '');
+        if (index != null && index > 0 && index <= skillCount) {
+          return index - 1;
+        }
+        print(getLocalizedText(
+            '올바른 번호를 입력해주세요.', 'Please enter a valid number.'));
+      } catch (e) {
+        print(getLocalizedText("스킬 선택 중 오류가 발생했습니다: $e",
+            "An error occurred while choosing a skill: $e"));
+      }
+    }
+  }
+
   // 게임 저장 여부 확인
   bool askToSave() {
     print("레벨업을 했습니다. 게임을 저장하시겠습니까? (y/n)");
@@ -138,26 +157,6 @@ class InputService {
         print('올바른 입력을 해주세요 (y 또는 n).');
       } catch (e) {
         print("입력 처리 중 오류가 발생했습니다: $e");
-      }
-    }
-  }
-
-  // 스킬 선택
-  int getSkillChoice(int skillCount) {
-    while (true) {
-      try {
-        stdout.write(getLocalizedText('사용할 스킬을 선택하세요 (1-$skillCount): ',
-            'Choose a skill to use (1-$skillCount): '));
-        String? choice = stdin.readLineSync()?.trim();
-        int? index = int.tryParse(choice ?? '');
-        if (index != null && index > 0 && index <= skillCount) {
-          return index - 1;
-        }
-        print(getLocalizedText(
-            '올바른 번호를 입력해주세요.', 'Please enter a valid number.'));
-      } catch (e) {
-        print(getLocalizedText("스킬 선택 중 오류가 발생했습니다: $e",
-            "An error occurred while choosing a skill: $e"));
       }
     }
   }
@@ -188,7 +187,6 @@ class OutputService {
 
   // 환영 메시지 출력
   void displayWelcomeMessage(String playerName) {
-    print("[DEBUG] displayWelcomeMessage() 호출");
     print(getLocalizedText("$playerName님, RPG 게임에 오신 것을 환영합니다!",
         "Welcome to the RPG game, $playerName!"));
   }
@@ -281,6 +279,22 @@ class OutputService {
     } else {
       print('$attackerName의 $element 속성 공격이 $defenderName에게 효과가 떨어집니다.');
     }
+  }
+
+  void displaySkillList(List<Skill> skills) {
+    print(getLocalizedText('\n사용 가능한 스킬:', '\nAvailable skills:'));
+    for (int i = 0; i < skills.length; i++) {
+      print('${i + 1}. ${skills[i].name} (MP 소모: ${skills[i].mpCost})');
+    }
+  }
+
+  void displaySkillUsed(Character character, Skill skill) {
+    print(getLocalizedText('${character.name}이(가) ${skill.name} 스킬을 사용했습니다!',
+        '${character.name} used the skill ${skill.name}!'));
+  }
+
+  void displayNotEnoughMP() {
+    print(getLocalizedText('MP가 부족합니다.', 'Not enough MP.'));
   }
 
   void displaySkillEnhanced(Character character, Skill skill) {
@@ -398,13 +412,5 @@ class OutputService {
   void displayNoSavedGame() {
     print(getLocalizedText('저장된 게임이 없습니다. 새로운 게임을 시작합니다.',
         'No saved game found. Starting a new game.'));
-  }
-
-  // 스킬 목록 표시
-  void displaySkillList(List<Skill> skills) {
-    print(getLocalizedText('\n사용 가능한 스킬:', '\nAvailable skills:'));
-    for (int i = 0; i < skills.length; i++) {
-      print('${i + 1}. ${skills[i].name} (MP 소모:${skills[i].mpCost})');
-    }
   }
 }

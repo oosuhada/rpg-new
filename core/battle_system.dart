@@ -88,30 +88,25 @@ class BattleSystem {
 
   // 플레이어가 공격 방식을 선택하고 실행하는 함수
   Future executeAttackChoice(Character character, Monster monster) async {
-    String? attackChoice = await inputService.getAttackChoice(); // 공격 방식 선택
-
+    String? attackChoice = await inputService.getAttackChoice();
     if (attackChoice == '1') {
-      // 기본 공격
       character.attackMonster(monster, outputService);
     } else if (attackChoice == '2') {
-      // 스킬 사용
       if (character.skills.isNotEmpty) {
-        int skillIndex =
-            inputService.getSkillChoice(character.skills.length); // 스킬 선택
+        outputService.displaySkillList(character.skills);
+        int skillIndex = inputService.getSkillChoice(character.skills.length);
         Skill chosenSkill = character.skills[skillIndex];
-
-        bool success = character.useSkill(chosenSkill, monster); // 스킬 사용 시도
+        bool success = character.useSkill(chosenSkill, monster);
         if (success) {
-          outputService.displaySkillEnhanced(
-              character, chosenSkill); // 성공 시 스킬 사용 메시지 출력
+          outputService.displaySkillUsed(character, chosenSkill);
         } else {
-          print("MP가 부족합니다."); // MP 부족 메시지 출력
+          outputService.displayNotEnoughMP();
         }
       } else {
-        outputService.displayNoSkillsAvailable(); // 사용 가능한 스킬이 없을 때 메시지 출력
+        outputService.displayNoSkillsAvailable();
       }
     } else {
-      print('올바른 선택지를 입력해주세요.'); // 잘못된 입력 처리
+      outputService.displayInvalidActionMessage();
     }
   }
 }
